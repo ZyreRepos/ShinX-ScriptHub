@@ -1,0 +1,295 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<style>
+:root {
+  --bg: #141414;
+  --panel: #191919;
+  --border: #262626;
+  --text: #8a8a8a;
+  --muted: #505050;
+  --accent: #5a5a5a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.2);
+  border-radius: 6px;
+}
+
+.search-wrapper {
+  padding: 10px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.searchbar {
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto;
+  display: block;
+  padding: 8px 12px;
+  font-size: .8rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  outline: none;
+}
+
+.scriptscontainer {
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.script {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: cardIn .3s ease;
+}
+
+.script img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+}
+
+.script-content {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.script h3 {
+  margin: 0;
+  font-size: .75rem;
+}
+
+.game-name {
+  font-size: .65rem;
+  color: var(--muted);
+}
+
+.card-actions {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.copy {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: .7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: 
+    transform .12s ease,
+    background .12s ease,
+    border-color .12s ease;
+}
+
+.copy:hover {
+  border-color: var(--accent);
+  background: rgba(255,255,255,.04);
+}
+
+.copy:active {
+  transform: scale(.95);
+}
+
+.send {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.send:hover {
+  border-color: var(--accent);
+  background: rgba(255,255,255,.04);
+}
+
+.send:active { transform: scale(.95); }
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+* {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+input, textarea {
+  user-select: text;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="search-wrapper">
+  <input class="searchbar" placeholder="Search scripts">
+</div>
+
+<div class="scriptscontainer"></div>
+
+<script>
+const proxies = [
+  "https://corsproxy.io/?",
+  "https://api.codetabs.com/v1/proxy/?quest=",
+  "https://thingproxy.freeboard.io/fetch/"
+];
+
+let page = 1;
+let proxy = 0;
+let loading = false;
+let currentQuery = "";
+
+async function loadScripts(query="", append=false) {
+  const c = document.querySelector(".scriptscontainer");
+  if (!append) c.innerHTML = "";
+
+  const url = query
+    ? `https://scriptblox.com/api/script/search?q=${encodeURIComponent(query)}&page=${page}`
+    : `https://scriptblox.com/api/script/fetch?page=${page}`;
+
+  try {
+    const r = await fetch(proxies[proxy] + url);
+    const d = await r.json();
+    (d?.result?.scripts || []).forEach(addCard);
+  } catch {
+    proxy = (proxy + 1) % proxies.length;
+    loadScripts(query, append);
+  }
+}
+
+function addCard(script) {
+  const img = script.image
+    ? (script.image.startsWith("http") ? script.image : "https://scriptblox.com" + script.image)
+    : "https://placehold.co/300x180/141414/aaaaaa?text=No+Image";
+
+  const card = document.createElement("div");
+  card.className = "script";
+  card.innerHTML = `
+    <img src="${img}">
+    <div class="script-content">
+      <h3>${script.title || "Unknown Script"}</h3>
+      <div class="game-name">${script.game?.name || "Unknown Game"}</div>
+
+      <div class="card-actions">
+        <button class="copy" data-script="${encodeURIComponent(script.script)}">Copy</button>
+        <button class="send" data-script="${encodeURIComponent(script.script)}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+            viewBox="0 0 24 24" fill="none" stroke="#767676"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.698 4.034l16.302 7.966l-16.302 7.966a.503 .503 0 0 1 -.546 -.124a.555 .555 0 0 1 -.12 -.568l2.468 -7.274l-2.468 -7.274a.555 .555 0 0 1 .12 -.568a.503 .503 0 0 1 .546 -.124"/>
+            <path d="M6.5 12h14.5"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+  document.querySelector(".scriptscontainer").appendChild(card);
+}
+
+document.addEventListener("click", async e => {
+  if (!e.target.classList.contains("copy")) return;
+  await navigator.clipboard.writeText(
+    decodeURIComponent(e.target.dataset.script)
+  );
+  e.target.textContent = "Copied";
+  setTimeout(() => e.target.textContent = "Copy", 800);
+});
+
+document.addEventListener("click", e => {
+  const btn = e.target.closest(".send");
+  if (!btn) return;
+
+  const script = decodeURIComponent(btn.dataset.script);
+  if (window.chrome?.webview)
+    window.chrome.webview.postMessage(script);
+});
+
+document.querySelector(".searchbar").addEventListener("input", e => {
+  currentQuery = e.target.value.trim();
+  page = 1;
+  loadScripts(currentQuery);
+});
+
+document.addEventListener("scroll", async () => {
+  if (loading) return;
+  if (innerHeight + scrollY >= document.body.offsetHeight - 300) {
+    loading = true;
+    page++;
+    await loadScripts(currentQuery, true);
+    loading = false;
+  }
+});
+
+loadScripts();
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+document.addEventListener("selectstart", e => e.preventDefault());
+document.addEventListener("dragstart", e => e.preventDefault());
+
+document.addEventListener("keydown", e => {
+  const blockedKeys = [
+    "F12",
+    "F5",
+    "F11"
+  ];
+
+  if (
+    blockedKeys.includes(e.key) ||
+    e.ctrlKey ||           
+    e.metaKey ||           
+    e.altKey ||            
+    e.shiftKey && e.ctrlKey
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
+});
+</script>
+</body>
+</html>
